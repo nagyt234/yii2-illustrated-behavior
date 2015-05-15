@@ -91,7 +91,8 @@ Name of the file input attribute in the ActiveRecord. This is the attribute to b
 
 #### imgAttribute ####
 
-Name of the attribute in the ActiveRecord where the img src file name of the resulting cropped image is stored. This attribute should be a field in the database table of the ActiveRecord. Default: `'img'`.
+Name of the attribute in the ActiveRecord where the img src file name of the resulting cropped image is stored. This attribute should be a field in 
+the database table of the ActiveRecord. Default: `'img'`.
 
 #### sizeAttribute ####
 
@@ -100,6 +101,46 @@ If `null`: `cropSize` is strict, and the crop size is not stored in the ActiveRe
 If `string`: name of the attribute in the ActiveRecord where size is stored. Lower crop size than `cropSize` may be accepted. 
 
 Default: `null`.
+
+#### originalNameAttribute ####
+
+If `null`: original file name not saved.
+
+If `string`: name of the attribute in the ActiveRecord where original file name stored. 
+
+Default: `null`.
+
+#### originalXAttribute ####
+
+If `null`: original horizontal size not saved.
+
+If `string`: name of the attribute in the ActiveRecord where original horizontal size stored. 
+
+Default: `null`.
+
+#### originalYAttribute ####
+
+If `null`: original vertical size not saved.
+
+If `string`: name of the attribute in the ActiveRecord where original vertical size stored. 
+
+Default: `null`.
+
+#### originalSizeAttribute ####
+
+If `null`: byte size of the original image not saved.
+
+If `string`: name of the attribute in the ActiveRecord where byte size of the original image stored. 
+
+Default: `null`.
+
+#### saveOriginalImage ####
+
+If `false`: original file not saved.
+
+If `true`: the original (uncropped) image saved in subdirectory `original` of the directory where cropped images are stored. 
+
+Default: `false`.
 
 #### aspectRatio ####
 

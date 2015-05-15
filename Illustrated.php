@@ -50,6 +50,41 @@ class Illustrated extends Behavior  {
     public $sizeAttribute;
 
     /**
+     * @var null|string
+     * If null (default): original file name not saved.
+     * If string: name of the attribute in the ActiveRecord where original file name stored. 
+     */
+    public $originalNameAttribute;
+
+    /**
+     * @var null|string
+     * If null (default): original horizontal size not saved.
+     * If string: name of the attribute in the ActiveRecord where original horizontal size stored. 
+     */
+    public $originalXAttribute;
+
+    /**
+     * @var null|string
+     * If null (default): original vertical size not saved.
+     * If string: name of the attribute in the ActiveRecord where original vertical size stored. 
+     */
+    public $originalYAttribute;
+
+    /**
+     * @var null|string
+     * If null (default): byte size of the largest cropped image not saved.
+     * If string: name of the attribute in the ActiveRecord where byte size of the largest cropped image stored.
+     */
+    public $originalSizeAttribute;
+
+    /**
+     * @var boolean
+     * If false (default): original file not saved.
+     * If string: the original (uncropped) image saved in subdirectory 'original' of the directory where cropped images are stored. 
+     */
+    public $saveOriginalImage = false;
+
+    /**
      * @var float|string
      * If float: the fixed aspect ratio of the image; it is not saved in the database.
      * If string: name of aspect attribute in the model. The variable aspect ratio is saved in the database.
@@ -200,6 +235,12 @@ class Illustrated extends Behavior  {
              */
             $owner = $this->owner;
 
+            // Save information from original if wanted
+            if ($this->originalNameAttribute) {
+                $owner->setAttribute($this->originalNameAttribute, 
+                                     $this->_file->baseName . '.' . $this->_file->extension);
+            }
+
             // Determine aspect ratio
             if (is_numeric($this->aspectRatio))   {
                 $asp = $this->aspectRatio;
@@ -217,6 +258,14 @@ class Illustrated extends Behavior  {
             $imgSize = $this->_image->getSize();
             $ww = $imgSize->getWidth();
             $hh = $imgSize->getHeight();
+
+            // Save information from original if wanted
+            if ($this->originalXAttribute) {
+                $owner->setAttribute($this->originalXAttribute, $ww);
+            }
+            if ($this->originalYAttribute) {
+                $owner->setAttribute($this->originalYAttribute, $hh);
+            }
 
             $error = true;  // presume error
 
@@ -248,7 +297,8 @@ class Illustrated extends Behavior  {
             $ext = $this->_file->extension;
             if ($ext == 'jpeg') $ext = 'jpg';
 
-            $owner->setAttribute($this->imgAttribute, $this->randomName() . '.' . $ext);
+            $fileName = $this->randomName() . '.' . $ext;
+            $owner->setAttribute($this->imgAttribute, $fileName);
 
             if ($this->sizeAttribute && $this->sizeSteps)   {   // if crop size not strict
                 $ww = $this->_w;
@@ -262,6 +312,18 @@ class Illustrated extends Behavior  {
                 }
                 else $s = 0;
                 $owner->setAttribute($this->sizeAttribute, $s); // set in model
+            }
+
+            // Save original image if wanted
+            if ($this->saveOriginalImage) {
+                $dir = $this->getImgBaseDir() . DIRECTORY_SEPARATOR . 'original';
+                FileHelper::createDirectory($dir);
+                $this->_file->saveAs($dir . DIRECTORY_SEPARATOR . $fileName, false);
+            }
+
+            // Save original file size if wanted
+            if ($this->originalSizeAttribute) {
+                $owner->setAttribute($this->originalSizeAttribute, $this->_file->size);
             }
         }
     }
@@ -285,6 +347,7 @@ class Illustrated extends Behavior  {
                 $ww = $size * $aspect;
                 $hh = $size;
             }
+
             if ($this->sizeSteps && $size > 0)    {
 
                 $minSize = $this->cropSize >> ($this->sizeSteps - 1);
@@ -394,6 +457,10 @@ class Illustrated extends Behavior  {
                 $path = $this->getImgBaseDir() . DIRECTORY_SEPARATOR . $fileName;
                 if (file_exists($path)) unlink($path);
             }
+            // Delete orignal if exists
+            $path = $this->getImgBaseDir() . DIRECTORY_SEPARATOR . 'original' . DIRECTORY_SEPARATOR . $fileName;
+            if (file_exists($path)) unlink($path);
+
             $owner->setAttribute($this->imgAttribute, null);
         }
     }
