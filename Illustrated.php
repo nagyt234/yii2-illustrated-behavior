@@ -196,7 +196,7 @@ class Illustrated extends Behavior  {
             ActiveRecord::EVENT_BEFORE_UPDATE => 'beforeSave',
             ActiveRecord::EVENT_AFTER_INSERT => 'afterSave',
             ActiveRecord::EVENT_AFTER_UPDATE => 'afterSave',
-            ActiveRecord::EVENT_BEFORE_DELETE => 'beforeDelete',
+            ActiveRecord::EVENT_AFTER_DELETE => 'afterDelete',
         ];
     }
 
@@ -371,7 +371,7 @@ class Illustrated extends Behavior  {
         }
     }
 
-    public function beforeDelete($event)  {
+    public function afterDelete($event)  {
         $this->deleteFiles();
     }
 
@@ -380,13 +380,9 @@ class Illustrated extends Behavior  {
      *      The largest side in pixels.
      *      If $sizeSteps > 0, getImgHtml returns the smallest crop variant equal to or bigger than $size.
      *      If $size == 0 (default) the biggest variant is returned.
-     * @param bool $forceSize
-     *      If true (default), the element css is set to $size.
-     * @param array $options
-     *      HTML-options of the img-tag; see yii\helpers\Html::img().
      * @return string
      */
-    public function getImgHtml($size = 0, $forceSize = true, $options = [])  {
+    public function getImgUrl($size = 0)  {
         /**
          * @var $owner ActiveRecord
          */
@@ -413,12 +409,28 @@ class Illustrated extends Behavior  {
         else    {
             $url = $bUrl;
         }
+
+        return $url . $fName;
+    }
+
+    /**
+     * @param int $size
+     *      The largest side in pixels.
+     *      If $sizeSteps > 0, getImgHtml returns the smallest crop variant equal to or bigger than $size.
+     *      If $size == 0 (default) the biggest variant is returned.
+     * @param bool $forceSize
+     *      If true (default), the element css is set to $size.
+     * @param array $options
+     *      HTML-options of the img-tag; see yii\helpers\Html::img().
+     * @return string
+     */
+    public function getImgHtml($size = 0, $forceSize = true, $options = [])  {
         if ($forceSize && $size > 0) {
             $style = isset($options['style']) ? $options['style'] : '';
             $style .= "max-width:{$size}px;max-height:{$size}px;";
             $options['style'] = $style;
         }
-        return Html::img($url . $fName, $options);
+        return Html::img($this->getImgUrl($size), $options);
     }
 
     protected function getImgBaseDir()  {
