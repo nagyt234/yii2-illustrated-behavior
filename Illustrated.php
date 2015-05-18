@@ -80,7 +80,7 @@ class Illustrated extends Behavior  {
     /**
      * @var boolean
      * If false (default): original file not saved.
-     * If string: the original (uncropped) image saved in subdirectory 'original' of the directory where cropped images are stored. 
+     * If true: the original (uncropped) image saved in subdirectory 'original' of the directory where cropped images are stored. 
      */
     public $saveOriginalImage = false;
 
@@ -108,6 +108,17 @@ class Illustrated extends Behavior  {
      * If $sizeSteps = 0 (default), only one cropped image is saved, with size $cropSize.
      */
     public $sizeSteps = 0;
+
+    /**
+     * @var boolean
+     * If true and $sizeSteps is set than images that wider as the smallest crop size allowed.
+     * In that case uncropped image will be saved in the greather crop files. E.g. if 
+     * $cropSize = 1400, $sizeSteps = 4 => minimum crop size = 175. If an image with width of
+     * 500 px ia uploaded, that the 1400 and 700 px variants will contain the original file, 
+     * while the 350 and 175 px variants will contain cropped images.
+     * Default: false
+     */
+    public $allowSmallImage = false;
 
     /**
      * @var null|string
@@ -149,6 +160,12 @@ class Illustrated extends Behavior  {
      *      You may add things like maximum file size here. See yii\validators\FileValidator.
      */
     public $fileValidation = [];
+
+    /**
+     * @var null|function
+     * Function to call at end of beforeSave
+     */
+    public $beforeSaveCallback;
 
 
     protected $_file;
@@ -226,14 +243,20 @@ class Illustrated extends Behavior  {
     }
 
     public function beforeValidate($event)  {
-        $upl = new UploadedFile();
-        $this->_file = $upl->getInstance($this->owner, $this->fileAttribute);
-        if ($this->_file && ! $this->_file->hasError)   {
+        /**
+         * @var $owner ActiveRecord
+         */
+        $owner = $this->owner;
 
-            /**
-             * @var $owner ActiveRecord
-             */
-            $owner = $this->owner;
+        $upl = new UploadedFile();
+        $this->_file = $upl->getInstance($owner, $this->fileAttribute);
+
+        if (!$this->_file) {
+            if ($owner->isNewRecord) {
+                $owner->addError($this->fileAttribute, 'Please, select a file');
+                $event->isValid = false;
+            }
+        } elseif (! $this->_file->hasError) {
 
             // Save information from original if wanted
             if ($this->originalNameAttribute) {
@@ -275,6 +298,11 @@ class Illustrated extends Behavior  {
                 if ($this->sizeAttribute && $this->sizeSteps) $cropSize >>= ($this->sizeSteps - 1);     // crop size not strict
                 $error = $asp > 1 ? ($this->_w < $cropSize) : ($this->_h < $cropSize);
                 if (! $error) $this->_image->crop(new Point($this->_x, $this->_y), new Box($this->_w, $this->_h));
+            } else {
+                // No crop, image should be greather that smallest crop size
+                if ($this->allowSmallImage && $this->cropSize && $this->sizeSteps) {
+                    $error = $ww < ($this->cropSize >> ($this->sizeSteps - 1));
+                }
             }
 
             if ($error)    {       // set error in model
@@ -325,6 +353,12 @@ class Illustrated extends Behavior  {
             if ($this->originalSizeAttribute) {
                 $owner->setAttribute($this->originalSizeAttribute, $this->_file->size);
             }
+
+            // Save uploader info file size if wanted
+            if ($this->beforeSaveCallback) {
+                $func = $this->beforeSaveCallback;
+                $func($owner, $this);
+            }
         }
     }
 
@@ -349,10 +383,15 @@ class Illustrated extends Behavior  {
             }
 
             if ($this->sizeSteps && $size > 0)    {
+                $imgSize = $this->_image->getSize();
+                $orig_w = $imgSize->getWidth();
 
                 $minSize = $this->cropSize >> ($this->sizeSteps - 1);
                 while ($size >= $minSize)  {
-                    $this->_image->resize(new Box($ww, $hh));
+                    # Resize only if requested size is smaller the the original one
+                    if ($size < $orig_w) {
+                        $this->_image->resize(new Box($ww, $hh));
+                    }
                     $dir = $this->getImgBaseDir() . DIRECTORY_SEPARATOR . $size;
                     FileHelper::createDirectory($dir);
                     $this->_image->save($dir . DIRECTORY_SEPARATOR . $fileName);
